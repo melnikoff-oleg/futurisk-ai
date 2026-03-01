@@ -1,0 +1,80 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { scrapeLinkedInProfile } from '@/lib/apify'
+import { generateReport } from '@/lib/openrouter'
+import { getReport, deleteReport, upsertReport, updateReport } from '@/lib/supabase'
+
+export const maxDuration = 120
+
+const LINKEDIN_REGEX =
+  /^https?:\/\/(www\.)?linkedin\.com\/in\/([a-zA-Z0-9\-_%]+)\/?([?#].*)?$/i
+
+function extractUsername(url: string): string | null {
+  const match = url.trim().match(LINKEDIN_REGEX)
+  if (!match?.[2]) return null
+  return decodeURIComponent(match[2]).toLowerCase().replace(/\/$/, '')
+}
+
+export async function POST(request: NextRequest) {
+  let username: string | null = null
+
+  try {
+    const body = await request.json()
+    const linkedinUrl = typeof body?.linkedin_url === 'string'
+      ? body.linkedin_url.trim()
+      : ''
+
+    username = extractUsername(linkedinUrl)
+    if (!username) {
+      return NextResponse.json(
+        { error: 'Please enter a valid LinkedIn profile URL.' },
+        { status: 400 }
+      )
+    }
+
+    // Delete any existing report so we always regenerate fresh
+    const existing = await getReport(username)
+    if (existing) {
+      await deleteReport(username)
+    }
+
+    // Create row as processing
+    await upsertReport({ username, linkedin_url: linkedinUrl, status: 'processing' })
+
+    // Step 1: Scrape LinkedIn profile
+    const profileData = await scrapeLinkedInProfile(linkedinUrl)
+
+    // Step 2: Generate report
+    const report = await generateReport(profileData)
+
+    // Step 3: Store in Supabase
+    await updateReport(username, {
+      status: 'complete',
+      profile_data: profileData,
+      report,
+    })
+
+    return NextResponse.json({
+      ok: true,
+      username,
+      status: 'complete',
+      cached: false,
+    })
+  } catch (error) {
+    console.error('generate-report error:', error)
+    const message = error instanceof Error ? error.message : 'Unknown error'
+
+    // Try to mark the report as errored if we have a username
+    if (username) {
+      try {
+        await updateReport(username, { status: 'error', error_message: message })
+      } catch {
+        // Ignore secondary errors
+      }
+    }
+
+    return NextResponse.json(
+      { error: 'Failed to generate report. Please try again.' },
+      { status: 500 }
+    )
+  }
+}
