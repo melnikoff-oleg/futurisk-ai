@@ -3,7 +3,7 @@ import { scrapeLinkedInProfile } from '@/lib/apify'
 import { generateReport } from '@/lib/openrouter'
 import { getReport, deleteReport, upsertReport, updateReport } from '@/lib/supabase'
 
-export const maxDuration = 120
+export const maxDuration = 60
 
 const LINKEDIN_REGEX =
   /^https?:\/\/(www\.)?linkedin\.com\/in\/([a-zA-Z0-9\-_%]+)\/?([?#].*)?$/i
