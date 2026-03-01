@@ -20,11 +20,8 @@ export async function generateReport(profile: LinkedInProfile): Promise<Report> 
         { role: 'user', content: buildUserPrompt(profile) },
       ],
       temperature: 0.7,
-      max_tokens: 16000,
+      max_tokens: 8000,
       response_format: { type: 'json_object' },
-      reasoning: {
-        effort: 'medium',
-      },
     }),
     cache: 'no-store',
   })

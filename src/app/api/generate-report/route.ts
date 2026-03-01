@@ -16,6 +16,7 @@ function extractUsername(url: string): string | null {
 
 export async function POST(request: NextRequest) {
   let username: string | null = null
+  const t0 = Date.now()
 
   try {
     const body = await request.json()
@@ -36,15 +37,21 @@ export async function POST(request: NextRequest) {
     if (existing) {
       await deleteReport(username)
     }
+    console.log(`[timing] cleanup: ${Date.now() - t0}ms`)
 
     // Create row as processing
     await upsertReport({ username, linkedin_url: linkedinUrl, status: 'processing' })
+    console.log(`[timing] upsert: ${Date.now() - t0}ms`)
 
     // Step 1: Scrape LinkedIn profile
+    const t1 = Date.now()
     const profileData = await scrapeLinkedInProfile(linkedinUrl)
+    console.log(`[timing] apify scrape: ${Date.now() - t1}ms (total: ${Date.now() - t0}ms)`)
 
     // Step 2: Generate report
+    const t2 = Date.now()
     const report = await generateReport(profileData)
+    console.log(`[timing] openrouter: ${Date.now() - t2}ms (total: ${Date.now() - t0}ms)`)
 
     // Step 3: Store in Supabase
     await updateReport(username, {
@@ -52,6 +59,7 @@ export async function POST(request: NextRequest) {
       profile_data: profileData,
       report,
     })
+    console.log(`[timing] TOTAL: ${Date.now() - t0}ms`)
 
     return NextResponse.json({
       ok: true,
@@ -60,10 +68,10 @@ export async function POST(request: NextRequest) {
       cached: false,
     })
   } catch (error) {
+    console.error(`[timing] FAILED at ${Date.now() - t0}ms`)
     console.error('generate-report error:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
 
-    // Try to mark the report as errored if we have a username
     if (username) {
       try {
         await updateReport(username, { status: 'error', error_message: message })
