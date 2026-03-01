@@ -9,31 +9,31 @@ const STEPS = [
     id: 'scraping',
     label: 'Fetching your LinkedIn profile',
     detail: 'Reading your career history, skills, and experience...',
-    duration: 8000,
+    duration: 5000,
   },
   {
     id: 'analyzing',
     label: 'Analyzing your career trajectory',
-    detail: 'Mapping your role and industry to AI risk factors...',
-    duration: 12000,
+    detail: 'Mapping your role and industry to AI earning potential...',
+    duration: 8000,
   },
   {
     id: 'researching',
     label: 'Reviewing AI research',
-    detail: 'Cross-referencing McKinsey, Stanford, and Anthropic data...',
-    duration: 15000,
+    detail: 'Cross-referencing McKinsey, Stanford, Anthropic, and YC data...',
+    duration: 10000,
   },
   {
-    id: 'thinking',
-    label: 'Deep-thinking about your specific niche',
-    detail: 'Reasoning through how AI impacts your exact position...',
-    duration: 30000,
+    id: 'mapping',
+    label: 'Building your AI Money Map',
+    detail: 'Charting your earning potential quarter by quarter...',
+    duration: 12000,
   },
   {
     id: 'generating',
     label: 'Generating your personalized report',
-    detail: 'Building your timeline, risks, and action plan...',
-    duration: 40000,
+    detail: 'Creating your 3-year money plan and action steps...',
+    duration: 20000,
   },
 ]
 
@@ -90,10 +90,12 @@ export function ProcessingScreen({ username, linkedinUrl }: ProcessingScreenProp
     return () => timers.forEach(clearTimeout)
   }, [])
 
-  // When API finishes, mark the last step complete
+  // When API finishes, mark ALL steps complete (animation may still be mid-way)
   useEffect(() => {
     if (apiDone) {
-      setStepStatuses((prev) => ({ ...prev, [LAST_STEP_ID]: 'complete' }))
+      setStepStatuses(
+        Object.fromEntries(STEPS.map((s) => [s.id, 'complete' as StepStatus]))
+      )
     }
   }, [apiDone])
 
@@ -147,7 +149,7 @@ export function ProcessingScreen({ username, linkedinUrl }: ProcessingScreenProp
         <div className="mb-10 text-center">
           <h1 className="text-2xl font-bold text-text">Analyzing your career</h1>
           <p className="mt-2 text-text-muted text-sm">
-            Our AI is deeply analyzing your specific niche. This usually takes 2–3 minutes.
+            Our AI is analyzing your earning potential. This usually takes about a minute.
           </p>
           <p className="mt-3 text-xs text-text-muted tabular-nums">
             {formatTime(elapsed)} elapsed
